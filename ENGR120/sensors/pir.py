@@ -1,11 +1,11 @@
-# author Connor Fletcher
-# date 07-03-2026
-# Detects motion using infrared sensor
+# author Ben Bligh #
+# date 07-03-2026 #
+# Detects motion using infrared sensor #
 from machine import Pin
 import time
 
 OCCUPANCY_TIMER = 5
-LIGHTING_TIMER = 10 
+LIGHTING_TIMER = 7 
 
 last_motion_time = 0
 occupancy_end_time = 0
@@ -22,8 +22,11 @@ def pir_interrupt(pin):
     global motion_detected
     if pin.value() == 1:
         motion_detected = True
+        print("pin.value() condition fired")
+    print("interrupt fired\n")
 
 # sets up pins for circuit and defines the interrupt process
+# param sensors sesnors for each component
 def setup(pir_sensor, occupancy_led, lighting_led):
     global pir_pin, occupancy_led_pin, lighting_led_pin
 
@@ -55,10 +58,10 @@ def update():
         if not is_occupied:
             print("PIR: space is occupied")
             is_occupied = True
-            occupancy_led_pin.value(0) #change back to 1 - is 0 for testing
+            occupancy_led_pin.value(1) #change back to 1 - is 0 for testing
             lighting_led_pin.value(1) #change back to 1 - is 0 for testing
 
-    if is_occupied and (current_time - last_motion_time > OCCUPANCY_TIMER):
+    elif is_occupied and (current_time - last_motion_time > OCCUPANCY_TIMER):
         print("PIR: space is no longer occupied")
         is_occupied = False
         occupancy_led_pin.value(0)
