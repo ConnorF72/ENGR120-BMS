@@ -6,10 +6,12 @@ import sensors.thermistor
 from UI.web_page import web_page
 import sensors.pir
 import sensors.light_sensor
+import actuators.hvac
 
 sensors.thermistor.setup(1)
 sensors.pir.setup(16, 17, 18)
 sensors.light_sensor.setup(0)
+actuators.hvac.setup(heating_pin, cooling_pin) #UNCOMMENT WHEN READY TO ADD TO FUNCTIONALITY#
 
 ssid = 'RPI_PICO_AP'
 password = '12345678'
@@ -34,13 +36,14 @@ while True:
     
     temp = sensors.thermistor.read_temp()
     pir_state = sensors.pir.update()
+    hvac_state = actuators.hvac.hvac_actuation(temp, pir_state["occupied"])
     is_occupied = pir_state["occupied"]
     lights_on   = pir_state["lighting"]
     brightness = sensors.light_sensor.read_light_sensor()
-    is_bright = brightness["brightness"]
+    #is_bright = brightness["brightness"] #re include if brightness needs to be passed to web_page#
     time.sleep(0.1)
     
-    response = web_page(temp, is_occupied, lights_on, brightness)
+    response = web_page(temp, is_occupied, lights_on, hvac_state)
     
     conn.send("HTTP/1.1 200 OK\n")
     conn.send("Content-Type: text/html\n")
