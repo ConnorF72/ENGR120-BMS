@@ -4,7 +4,6 @@
 
 from machine import Pin
 
-# TODO: Ability to alter this from html page #
 UNOCCUPIED_TEMP = 15
 OCCUPIED_TEMP = 25
 heating_led = None
@@ -24,7 +23,9 @@ def setup(heating_pin, cooling_pin):
     
     print("HVAC Systems: Setup Complete")
 
-
+# control flow for HVAC system actuation state #
+# param temp Temperature data from thermistor after being converted to degrees celcius #
+# param is_occupied Boolean variable from PIR.py indicating whether the space is occupied #
 def hvac_actuation(temp, is_occupied):
     global UNOCCUPIED_TEMP, OCCUPIED_TEMP, STATE
     
