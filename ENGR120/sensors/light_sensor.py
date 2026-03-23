@@ -5,6 +5,10 @@
 import machine
 import time
 
+BRIGHTNESS_THRESHOLD_ON = 45000
+BRIGHTNESS_THRESHOLD_OFF = 40000
+is_bright = False
+
 light_sensor = None
 
 # sets up light_sensor global variable and configures ADC pin
@@ -16,13 +20,17 @@ def setup(pin):
 
 # reads light sensor data and assigns boolean return value depending on brightness #
 def read_light_sensor():
-    sensor_out = light_sensor.read_u16()
-    print(sensor_out) #prints resistance to console
-    if sensor_out < 50000:
-        is_bright = "High"
+    global is_bright
+    raw = light_sensor.read_u16()
+    print(raw) #prints resistance to console
+    
+    if is_bright:
+        if raw > BRIGHTNESS_THRESHOLD_OFF:
+            is_bright = False
             
     else:
-        is_bright = "Low"
+        if raw < BRIGHTNESS_THRESHOLD_ON:
+            is_bright = True
     return {
-        "brightness": is_bright
+        "brightness": "High" if is_bright else "Low"
         }
