@@ -13,10 +13,10 @@ def setup(pin):
 def read_temp():
     temp_sensor_val = temp_sensor.read_u16()
 
-    if temp_sensor_val == 0:  # only guard the true /0 case
+    if temp_sensor_val == 0 or temp_sensor_val >= 65535:
         return None
 
-    temp_val = round((((1 / (1/298 + (1/3960) * math.log((65535 / temp_sensor_val) - 1))) - 273) * 1), 1)
+    temp_val = round(((((1 / (1/298+(1/3960)*math.log((65535 / (temp_sensor_val) - 1)))) - 273)*1)),1)
     print(temp_sensor_val)
 
     return temp_val

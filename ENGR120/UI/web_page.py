@@ -1,23 +1,27 @@
 def web_page(temp, occupied, lighting, hvac_state,
              is_bright="--", kill_active=False,
-             occ_setpoint=25, unocc_setpoint=15):
-
+             occ_setpoint=25, unocc_setpoint=15,
+             light_forced=None):
+ 
     occ_label        = "Occupied"     if occupied    else "Unoccupied"
     lights_label     = "On"           if lighting    else "Off"
     kill_label       = "ACTIVE"       if kill_active else "Inactive"
     kill_btn_label   = "Deactivate"   if kill_active else "Activate"
     kill_btn_href    = "/?kill=0"     if kill_active else "/?kill=1"
-    lights_btn_label = "Turn Off"     if lighting    else "Turn On"
-    lights_btn_href  = "/?lights=off" if lighting    else "/?lights=on"
     kill_color       = "#e05555"      if kill_active else "#4caf78"
-
+    light_mode_label = "Manual"       if light_forced is not None else "Auto"
+ 
+    btn_auto_class   = "btn btn-accent" if light_forced is None  else "btn"
+    btn_on_class     = "btn btn-ok"     if light_forced is True  else "btn"
+    btn_off_class    = "btn btn-danger" if light_forced is False else "btn"
+ 
     hvac_icon = {
         "heating":     "&#9651;",
         "cooling":     "&#9661;",
         "off":         "&#9711;",
         "kill switch": "&#9940;",
     }.get(hvac_state, "&#9711;")
-
+ 
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,22 +30,22 @@ def web_page(temp, occupied, lighting, hvac_state,
   <title>ENGR 120 BMS</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;600&display=swap');
-
+ 
     :root {{
-      --bg:      #1a1d27;
-      --surface: #23273a;
-      --border:  #2e3450;
-      --accent:  #4fa3e0;
-      --ok:      #4caf78;
-      --danger:  #e05555;
-      --text:    #c8d0e7;
-      --muted:   #5a6080;
+      --bg:      #f0f2f7;
+      --surface: #ffffff;
+      --border:  #d0d6e8;
+      --accent:  #2a7bbf;
+      --ok:      #2e8f57;
+      --danger:  #c93535;
+      --text:    #1e2340;
+      --muted:   #7a83a8;
       --mono:    'Share Tech Mono', monospace;
       --sans:    'Exo 2', sans-serif;
     }}
-
+ 
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-
+ 
     body {{
       background: var(--bg);
       color: var(--text);
@@ -53,7 +57,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       padding: 2rem 1rem;
       gap: 1.5rem;
     }}
-
+ 
     header {{
       display: flex;
       flex-direction: column;
@@ -73,7 +77,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       color: var(--muted);
       letter-spacing: 0.1em;
     }}
-
+ 
     .status-grid {{
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -81,7 +85,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       width: 100%;
       max-width: 680px;
     }}
-
+ 
     .card {{
       background: var(--surface);
       border: 1px solid var(--border);
@@ -108,7 +112,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       color: var(--muted);
       font-family: var(--mono);
     }}
-
+ 
     .controls {{
       width: 100%;
       max-width: 680px;
@@ -129,7 +133,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       border-bottom: 1px solid var(--border);
       padding-bottom: 0.6rem;
     }}
-
+ 
     .ctrl-row {{
       display: flex;
       align-items: center;
@@ -150,7 +154,7 @@ def web_page(temp, occupied, lighting, hvac_state,
       font-family: var(--mono);
       margin-top: 0.1rem;
     }}
-
+ 
     .setpoint-form {{
       display: flex;
       align-items: center;
@@ -171,7 +175,7 @@ def web_page(temp, occupied, lighting, hvac_state,
     .setpoint-form input[type=number]:focus {{
       border-color: var(--accent);
     }}
-
+ 
     .btn {{
       display: inline-block;
       padding: 0.38rem 1rem;
@@ -182,39 +186,41 @@ def web_page(temp, occupied, lighting, hvac_state,
       letter-spacing: 0.05em;
       cursor: pointer;
       text-decoration: none;
-      border: none;
+      border: 1px solid var(--border);
       transition: opacity 0.15s;
+      color: var(--text);
+      background: transparent;
     }}
     .btn:hover {{ opacity: 0.82; }}
-    .btn-accent {{ background: var(--accent); color: #0f1220; }}
-    .btn-ok     {{ background: var(--ok);     color: #0f1220; }}
-    .btn-danger {{ background: var(--danger); color: #fff;    }}
-
+    .btn-accent {{ background: var(--accent); color: #fff;    border-color: var(--accent); }}
+    .btn-ok     {{ background: var(--ok);     color: #fff;    border-color: var(--ok);     }}
+    .btn-danger {{ background: var(--danger); color: #fff;    border-color: var(--danger);  }}
+ 
     .kill-row {{
       background: color-mix(in srgb, {kill_color} 8%, var(--surface));
       border: 1px solid color-mix(in srgb, {kill_color} 30%, var(--border));
       border-radius: 6px;
       padding: 0.7rem 0.9rem;
     }}
-
+ 
     .divider {{
       height: 1px;
       background: var(--border);
       width: 100%;
     }}
-
+ 
     @media (max-width: 520px) {{
       .status-grid {{ grid-template-columns: repeat(2, 1fr); }}
     }}
   </style>
 </head>
 <body>
-
+ 
   <header>
     <h1>Building Management System</h1>
     <div class="subtitle">ENGR 120 &mdash; <span id="refresh-indicator">LIVE</span></div>
   </header>
-
+ 
   <div class="status-grid">
     <div class="card">
       <div class="label">Temperature</div>
@@ -248,10 +254,10 @@ def web_page(temp, occupied, lighting, hvac_state,
       <div class="sub">unoccupied target</div>
     </div>
   </div>
-
+ 
   <div class="controls">
     <h2>Controls</h2>
-
+ 
     <div class="ctrl-row">
       <div class="ctrl-label">
         Occupied Setpoint
@@ -262,7 +268,7 @@ def web_page(temp, occupied, lighting, hvac_state,
         <button class="btn btn-accent" type="submit">Set</button>
       </form>
     </div>
-
+ 
     <div class="ctrl-row">
       <div class="ctrl-label">
         Unoccupied Setpoint
@@ -273,20 +279,23 @@ def web_page(temp, occupied, lighting, hvac_state,
         <button class="btn btn-accent" type="submit">Set</button>
       </form>
     </div>
-
+ 
     <div class="divider"></div>
-
+ 
     <div class="ctrl-row">
       <div class="ctrl-label">
-        Lighting Override
-        <span>Currently: <span id="ctrl-light-status">{lights_label}</span></span>
+        Lighting Control
+        <span id="ctrl-light-mode">Mode: {light_mode_label} &mdash; {lights_label}</span>
       </div>
-      <a class="btn {'btn-ok' if not lighting else 'btn-danger'}"
-         id="ctrl-light-btn" href="{lights_btn_href}">{lights_btn_label}</a>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a id="btn-auto" class="{btn_auto_class}" href="/?lights=auto">Auto</a>
+        <a id="btn-on"   class="{btn_on_class}"   href="/?lights=on">Force On</a>
+        <a id="btn-off"  class="{btn_off_class}"  href="/?lights=off">Force Off</a>
+      </div>
     </div>
-
+ 
     <div class="divider"></div>
-
+ 
     <div class="ctrl-row kill-row" id="kill-row">
       <div class="ctrl-label">
         Kill Switch
@@ -296,7 +305,7 @@ def web_page(temp, occupied, lighting, hvac_state,
          id="ctrl-kill-btn" href="{kill_btn_href}">{kill_btn_label}</a>
     </div>
   </div>
-
+ 
   <script>
     var HVAC_ICONS = {{
       "heating":     "&#9651;",
@@ -304,38 +313,33 @@ def web_page(temp, occupied, lighting, hvac_state,
       "off":         "&#9711;",
       "kill switch": "&#9940;"
     }};
-
+ 
     function updateCards(data) {{
       document.getElementById("stat-temp").innerHTML   = data.temp + "&deg;C";
       document.getElementById("stat-occ").textContent  = data.occupied ? "Occupied" : "Unoccupied";
-
+ 
       var lightText = data.lighting ? "On" : "Off";
       document.getElementById("stat-light").textContent  = lightText;
       document.getElementById("stat-bright").textContent = data.is_bright;
-
+ 
       var icon = HVAC_ICONS[data.hvac_state] || "&#9711;";
       document.getElementById("stat-hvac").innerHTML = icon + " " + data.hvac_state;
-
+ 
       document.getElementById("stat-occ-sp").textContent   = data.occ_setpoint;
       document.getElementById("stat-unocc-sp").textContent = data.unocc_setpoint;
       document.getElementById("stat-occ-sp2").innerHTML    = data.occ_setpoint + "&deg;C";
       document.getElementById("stat-unocc-sp2").innerHTML  = data.unocc_setpoint + "&deg;C";
-
+ 
       document.getElementById("ctrl-occ-sp").textContent   = data.occ_setpoint;
       document.getElementById("ctrl-unocc-sp").textContent = data.unocc_setpoint;
-
-      var lightBtn = document.getElementById("ctrl-light-btn");
-      document.getElementById("ctrl-light-status").textContent = lightText;
-      if (data.lighting) {{
-        lightBtn.textContent = "Turn Off";
-        lightBtn.href        = "/?lights=off";
-        lightBtn.className   = "btn btn-danger";
-      }} else {{
-        lightBtn.textContent = "Turn On";
-        lightBtn.href        = "/?lights=on";
-        lightBtn.className   = "btn btn-ok";
-      }}
-
+ 
+      var lf = data.light_forced;
+      document.getElementById("btn-auto").className = (lf === null)  ? "btn btn-accent" : "btn";
+      document.getElementById("btn-on").className   = (lf === true)  ? "btn btn-ok"     : "btn";
+      document.getElementById("btn-off").className  = (lf === false) ? "btn btn-danger" : "btn";
+      var modeLabel = (lf === null) ? "Auto" : "Manual";
+      document.getElementById("ctrl-light-mode").textContent = "Mode: " + modeLabel + " \u2014 " + lightText;
+ 
       var killBtn = document.getElementById("ctrl-kill-btn");
       document.getElementById("ctrl-kill-status").textContent = data.kill_active ? "ACTIVE" : "Inactive";
       if (data.kill_active) {{
@@ -348,18 +352,18 @@ def web_page(temp, occupied, lighting, hvac_state,
         killBtn.className   = "btn btn-danger";
       }}
     }}
-
+ 
     function pollStatus() {{
       fetch("/?status=1")
         .then(function(response) {{ return response.json(); }})
         .then(function(data)     {{ updateCards(data); }})
         .catch(function(err)     {{ console.log("Poll failed:", err); }});
     }}
-
+ 
     pollStatus();
     setInterval(pollStatus, 3000);
   </script>
-
+ 
 </body>
 </html>
 """

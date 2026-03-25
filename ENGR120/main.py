@@ -9,30 +9,30 @@ import sensors.pir
 import sensors.light_sensor
 import actuators.hvac
 import actuators.lighting
-
+ 
 sensors.thermistor.setup(1)
 sensors.pir.setup(16, 17)
 sensors.light_sensor.setup(0)
 actuators.lighting.setup(18)
-actuators.hvac.setup(4, 5)
-
+actuators.hvac.setup(20, 14)
+ 
 # --- Wi-Fi Access Point ---
 ssid     = 'RPI_PICO_AP'
 password = '12345678'
-
+ 
 ap = network.WLAN(network.AP_IF)
 ap.config(essid=ssid, password=password)
 ap.active(True)
-
+ 
 while not ap.active():
     time.sleep_ms(100)
 print('Connection is successful')
 print(ap.ifconfig())
-
+ 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
 s.listen(5)
-
+ 
 def parse_param(request_str, key):
     marker = key + "="
     idx = request_str.find(marker)
@@ -47,27 +47,29 @@ def parse_param(request_str, key):
     if end == -1:
         end = len(request_str)
     return request_str[start:end]
-
+ 
 kill_switch = False
-
+ 
 while True:
     conn, addr = s.accept()
     print('Got a connection from %s' % str(addr))
     request_bytes = conn.recv(1024)
     request_str   = str(request_bytes)
-
+ 
     if "?kill=1" in request_str:
         kill_switch = True
         print("Kill switch activated")
     elif "?kill=0" in request_str:
         kill_switch = False
         print("Kill switch deactivated")
-
+ 
     if "?lights=on" in request_str:
         actuators.lighting.force_lighting(True)
     elif "?lights=off" in request_str:
         actuators.lighting.force_lighting(False)
-
+    elif "?lights=auto" in request_str:
+        actuators.lighting.clear_force()
+ 
     occ_val   = parse_param(request_str, "occ_temp")
     unocc_val = parse_param(request_str, "unocc_temp")
     if occ_val is not None:
@@ -80,24 +82,27 @@ while True:
             actuators.hvac.set_unoccupied_temp(int(unocc_val))
         except ValueError:
             pass
-
+ 
     temp        = sensors.thermistor.read_temp()
+    temp_display = "--" if temp is None else temp
     is_occupied = sensors.pir.update()
     brightness  = sensors.light_sensor.read_light_sensor()
     is_bright   = brightness["brightness"]
     lights_on   = actuators.lighting.update(is_occupied, is_bright)
-
+ 
     if kill_switch:
         actuators.hvac.force_off()
         hvac_state = "kill switch"
+        actuators.lighting.force_lighting(False)  # ← added
+        lights_on = False    
     else:
         hvac_state = actuators.hvac.hvac_actuation(temp, is_occupied)
-
+ 
     time.sleep(0.1)
-
+ 
     if "?status=1" in request_str:
         payload = {
-            "temp":           temp,
+            "temp":           temp_display,
             "occupied":       is_occupied,
             "lighting":       lights_on,
             "hvac_state":     hvac_state,
@@ -105,6 +110,7 @@ while True:
             "occ_setpoint":   actuators.hvac.OCCUPIED_TEMP,
             "unocc_setpoint": actuators.hvac.UNOCCUPIED_TEMP,
             "kill_active":    kill_switch,
+            "light_forced":   actuators.lighting.force_state,
         }
         body = json.dumps(payload)
         conn.send("HTTP/1.1 200 OK\r\n")
@@ -113,9 +119,9 @@ while True:
         conn.sendall(body)
         conn.close()
         continue
-
+ 
     response = web_page(
-        temp           = temp,
+        temp           = temp_display,
         occupied       = is_occupied,
         lighting       = lights_on,
         hvac_state     = hvac_state,
@@ -123,8 +129,9 @@ while True:
         kill_active    = kill_switch,
         occ_setpoint   = actuators.hvac.OCCUPIED_TEMP,
         unocc_setpoint = actuators.hvac.UNOCCUPIED_TEMP,
+        light_forced   = actuators.lighting.force_state,
     )
-
+ 
     conn.send("HTTP/1.1 200 OK\r\n")
     conn.send("Content-Type: text/html\r\n")
     conn.send("Connection: close\r\n\r\n")

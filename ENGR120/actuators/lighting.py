@@ -9,6 +9,8 @@ lighting_led_pin = None
 lighting_active = False
 occupancy_end_time = 0
 force_state = None
+force_end_time = 0
+FORCE_TIMEOUT = 10
  
  
 def setup(lighting_led):
@@ -18,24 +20,35 @@ def setup(lighting_led):
     print("Lighting: setup complete")
  
  
-# Overrides automatic lighting logic with a fixed state #
-# param state  True = force on, False = force off, None = return to auto #
+# Forces lighting to a fixed state that persists until clear_force() is called #
+# param state  True = force on, False = force off #
 def force_lighting(state):
-    global force_state
+    global force_state, force_end_time
     force_state = state
+    force_end_time = time.time() + FORCE_TIMEOUT
+    print("Force set, expires at:", force_end_time, "current time:", time.time())
  
  
-# Clears any manual override and returns lighting to automatic control #
+# Clears manual override and returns lighting to automatic control #
+# Resets occupancy timer so auto mode re-evaluates immediately #
 def clear_force():
-    global force_state
+    global force_state, lighting_active, occupancy_end_time
     force_state = None
+    occupancy_end_time = 0
+ 
+ 
 # param is_occupied  Occupancy boolean from PIR sensor #
 # param is_bright    Brightness string ("High" / "Low") from light sensor #
 # return             Current lighting state boolean #
 def update(is_occupied, is_bright):
-    global lighting_active, occupancy_end_time
+    global lighting_active, occupancy_end_time, force_state, force_end_time
     current_time = time.time()
- 
+     
+    if force_state is not None and time.time() >= force_end_time:
+        print("Force expired, current:", time.time(), "end:", force_end_time)
+        force_state = None
+        force_end_time = 0
+        
     if force_state is not None:
         lighting_led_pin.value(1 if force_state else 0)
         return bool(force_state)
