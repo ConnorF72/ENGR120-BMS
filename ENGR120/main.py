@@ -34,10 +34,11 @@ s.bind(('', 80))
 s.listen(5)
 
 def parse_param(request_str, key):
-    """Return the string value of ?key=VALUE from the request line, or None."""
     marker = key + "="
     idx = request_str.find(marker)
     if idx == -1:
+        return None
+    if idx > 0 and request_str[idx - 1] not in ('?', '&', '/'):
         return None
     start = idx + len(marker)
     end   = request_str.find("&", start)
